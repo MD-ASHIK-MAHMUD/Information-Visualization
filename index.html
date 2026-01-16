@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heart Health Analytics</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Libraries -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar: Patient Input -->
+        <aside class="sidebar inputs-panel">
+            <div class="brand">
+                <i data-lucide="heart-pulse" class="brand-icon"></i>
+                <span class="brand-text">CardioVis</span>
+            </div>
+
+            <div class="input-scroll-area">
+                <h3>New Patient Data</h3>
+                <p class="input-hint">Enter details to compare</p>
+
+                <form id="patientForm">
+                    <div class="form-group">
+                        <label>Age</label>
+                        <input type="number" id="in_Age" value="45" min="20" max="90">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Sex</label>
+                        <select id="in_Sex">
+                            <option value="M">Male</option>
+                            <option value="F">Female</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Chest Pain Type</label>
+                        <select id="in_ChestPainType">
+                            <option value="ATA">Atypical Angina</option>
+                            <option value="NAP">Non-Anginal</option>
+                            <option value="ASY" selected>Asymptomatic</option>
+                            <option value="TA">Typical Angina</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Resting BP (mm Hg)</label>
+                        <input type="number" id="in_RestingBP" value="130">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Cholesterol (mg/dl)</label>
+                        <input type="number" id="in_Cholesterol" value="220">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Max Heart Rate</label>
+                        <input type="number" id="in_MaxHR" value="150">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Exerc. Angina</label>
+                        <select id="in_ExerciseAngina">
+                            <option value="N">No</option>
+                            <option value="Y">Yes</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Heart Disease</label>
+                        <select id="in_HeartDisease">
+                            <option value="0">No</option>
+                            <option value="1">Yes</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+
+            <div class="upload-section">
+                <p class="upload-label">Dataset</p>
+                <label for="csvUpload" class="upload-btn">
+                    <i data-lucide="upload"></i>
+                    <span>Load History Data</span>
+                </label>
+                <input type="file" id="csvUpload" accept=".csv" hidden>
+            </div>
+
+            <div class="action-section">
+                <button id="btnAddPatient" class="action-btn">
+                    <i data-lucide="plus-circle"></i>
+                    <span>Add to Dataset</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="header-titles">
+                    <h1>Patient Risk Analysis</h1>
+                    <p class="subtitle">Comparing new patient against historical heart disease records</p>
+                </div>
+                <div class="header-badges">
+                    <div class="badge-item">
+                        <span class="badge-label">Total Records</span>
+                        <span class="badge-value" id="totalRecords">--</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Analysis Grid -->
+            <div class="dashboard-grid">
+
+                <!-- Patient Snapshot Cards -->
+                <div class="stat-card highlight">
+                    <div class="stat-icon">
+                        <i data-lucide="activity"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Patient Position</h3>
+                        <p class="stat-value" id="riskLabel">Analyzing...</p>
+                        <p class="stat-sub" id="riskSub">vs Avg Population</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-info">
+                        <h3>Cholesterol Diff</h3>
+                        <p class="stat-value" id="cholDiff">--</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-info">
+                        <h3>Max HR Diff</h3>
+                        <p class="stat-value" id="hrDiff">--</p>
+                    </div>
+                </div>
+
+                <!-- Main Visualization: Risk Landscape -->
+                <div class="chart-container landscape-chart">
+                    <div class="chart-header">
+                        <h2>Risk Landscape (Age vs MaxHR)</h2>
+                        <div class="legend-box">
+                            <span class="dot-patient"></span> New Patient
+                            <span class="dot-normal"></span> Normal
+                            <span class="dot-disease"></span> Heart Disease
+                        </div>
+                    </div>
+                    <div class="canvas-wrapper">
+                        <div id="scatterChart" class="d3-chart"></div>
+                    </div>
+                </div>
+
+                <!-- Secondary: Distribution 1 -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h2>Cholesterol Distribution</h2>
+                    </div>
+                    <div class="canvas-wrapper">
+                        <div id="cholChart" class="d3-chart"></div>
+                    </div>
+                </div>
+
+                <!-- Secondary: Distribution 2 -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h2>Age Profile</h2>
+                    </div>
+                    <div class="canvas-wrapper">
+                        <div id="ageChart" class="d3-chart"></div>
+                    </div>
+                </div>
+
+                <!-- Secondary: Distribution 3 -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h2>Chest Pain Type</h2>
+                    </div>
+                    <div class="canvas-wrapper">
+                        <div id="pieChart" class="d3-chart"></div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>
